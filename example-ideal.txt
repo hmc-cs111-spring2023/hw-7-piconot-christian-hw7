@@ -1,0 +1,37 @@
+if facing(W) {
+    if open(W) {
+        move(W)
+    }
+    else {
+        face(N)
+    }
+}
+
+if facing(N) {
+    if open(N) {
+        move(N)
+    }
+    else {
+        move(S)
+        face(S)
+    }
+}
+
+if facing(S) {
+    if open(S) {
+        move(S)
+    }
+    else {
+        move(E)
+        face(E)
+    }
+}
+
+if facing(E) {
+    if open(N) {
+        move(N)
+    }
+    else {
+        move(E)
+    }
+}
