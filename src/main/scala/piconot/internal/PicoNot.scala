@@ -1,255 +1,117 @@
-// package piconot.internal
+package piconot.internal
 
-// import picolib._
-// import picolib.maze._
-// import picolib.semantics._
-// import java.io.File
+import picolib.maze.Maze
+import picolib.semantics._
+import picolib.display.TextDisplay
 
-// class Picofun(val mazeFilename: String) extends App {
+import scala.collection.mutable.ListBuffer
 
+/** @author
+  *   christian
+  */
 
-//     val state = 0
+class Picofun(val mazeFilename: String) extends App {
 
-//     def facing(direction: Char): State =
-//         direction match {
-//             case 'N' => State("N")
-//             case 'E' => State("E")
-//             case 'W' => State("W")
-//             case 'S' => State("S")
-//         }
+  // the list of rules, which is built up as the Picofun program executes
+  private val rules = ListBuffer.empty[Rule]
 
-//     def createSurroundings(directions: Array[RelativeDescription]): Surroundings =
-//         Surroundings(directions(0), directions(1), directions(2), directions(3))
+  def addRule(rule: Rule) = rules += rule
 
-//     def walls(direction: Char): Surroundings =
-//             direction match {
-//                 case 'N' => Surroundings(Open, Anything, Anything, Anything)
-//                 case 'E' => Surroundings(Anything, Open, Anything, Anything)
-//                 case 'W' => Surroundings(Anything, Anything, Open, Anything)
-//                 case 'S' => Surroundings(Anything, Anything, Anything, Open)
-//             }
+  def run = {
+    val maze = Maze(mazeFilename)
+    object bot extends Picobot(maze, rules.toList) with TextDisplay
+    bot.run()
+  }
 
-//     def blocked(direction: Char): Surroundings =
-//         direction match {
-//             case 'N' => Surroundings(Blocked, Anything, Anything, Anything)
-//             case 'E' => Surroundings(Anything, Blocked, Anything, Anything)
-//             case 'W' => Surroundings(Anything, Anything, Blocked, Anything)
-//             case 'S' => Surroundings(Anything, Anything, Anything, Blocked)
-//         }
+  /////////////////////////////////////////////////////////////////////////////
+  // Internal DSL definition
+  /////////////////////////////////////////////////////////////////////////////
 
-//     def move(direction: Char): MoveDirection = 
-//         direction match {
-//             case 'N' => North
-//             case 'E' => East
-//             case 'W' => West
-//             case 'S' => South
-//         }
+  def ifFacingNorth : Char = 'N'
+  def ifFacingEast : Char = 'E'
+  def ifFacingWest : Char = 'W'
+  def ifFacingSouth : Char = 'S'
+  def isOpen(d: Char): Surroundings = 
+    d match {
+      case 'N' => Surroundings(Open, Anything, Anything, Anything)
+      case 'E' => Surroundings(Anything, Open, Anything, Anything)
+      case 'W' => Surroundings(Anything, Anything, Open, Anything)
+      case 'S' => Surroundings(Anything, Anything, Anything, Open)
+      case _ => Surroundings(Anything, Anything, Anything, Anything)
+    }
 
-//     // def moving(move: Char):
-    
-//     // def open(direction: Char): Surroundings =
-//     //     direction match {
-//     //         case 'N' => Surroundings(Open, Anything, Anything, Anything)
-//     //         case 'E' => Surroundings(Anything, Open, Anything, Anything)
-//     //         case 'W' => Surroundings(Anything, Anything, Open, Anything)
-//     //         case 'S' => Surroundings(Anything, Anything, Anything, Open)
-//     //     }
-//     def ruleConstructor(face_0: Char, body: Array[String], face_final: Char): Rule =
-//         val wallsFOR: Array[RelativeDescription] = Array(Anything, Anything, Anything, Anything)
-//         var m: MoveDirection = StayHere
-//         for (e <- body) {
-//             val Array(instruction, directions) = e.split(" ")
-//             instruction match {
-//                 case "blocked" => 
-//                     for (dir <- directions) {
-//                         dir match {
-//                             case 'N' => wallsFOR(0) = Blocked
-//                             case 'E' => wallsFOR(1) = Blocked
-//                             case 'W' => wallsFOR(2) = Blocked
-//                             case 'S' => wallsFOR(3) = Blocked
-//                         }
-//                     }
-//                 case "open" => 
-//                     for (dir <- directions) {
-//                         dir match {
-//                             case 'N' => wallsFOR(0) = Open
-//                             case 'E' => wallsFOR(1) = Open
-//                             case 'W' => wallsFOR(2) = Open
-//                             case 'S' => wallsFOR(3) = Open
-//                         }
-//                     }
-//                 case "move" =>
-//                     directions match {
-//                         case "N" => m = North
-//                         case "E" => m = East
-//                         case "W" => m = West
-//                         case "S" => m = South
-//                     }
-//                 // case _ => SOME ERROR
-//             }
-//         }
-//         Rule(
-//             facing(face_0),
-//             createSurroundings(wallsFOR),
-//             m,
-//             facing(face_final)
-//         )
+  def isBlocked(d: Char): Surroundings = 
+    d match {
+      case 'N' => Surroundings(Blocked, Anything, Anything, Anything)
+      case 'E' => Surroundings(Anything, Blocked, Anything, Anything)
+      case 'W' => Surroundings(Anything, Anything, Blocked, Anything)
+      case 'S' => Surroundings(Anything, Anything, Anything, Blocked)
+      case _ => Surroundings(Anything, Anything, Anything, Anything)
+    }
 
-//     // Need to distinguish between following two, they'll depend on body if face and/or move are called.
-//     def ruleConstructor1(face_0: Char, open: Char, moveDir: Char): Rule =
-//         Rule(
-//             facing(face_0),
-//             walls(open),
-//             move(moveDir),
-//             facing(face_0)
-//         )
+  extension (s: Surroundings) {
+    def and(s2: Surroundings): Surroundings =
+      var computedWalls: Array[RelativeDescription] = Array(Anything, Anything, Anything, Anything)
+      if (s.north == Blocked || s2.north == Blocked) {
+        computedWalls(0) = Blocked
+      }
+      else if (s.north == Open || s2.north == Open) {
+        computedWalls(0) = Open
+      }
+      if (s.east == Blocked || s2.east == Blocked) {
+        computedWalls(1) = Blocked
+      }
+      else if (s.east == Open || s2.east == Open) {
+        computedWalls(1) = Open
+      }
+      if (s.west == Blocked || s2.west == Blocked) {
+        computedWalls(2) = Blocked
+      }
+      else if (s.west == Open || s2.west == Open) {
+        computedWalls(2) = Open
+      }
+      if (s.south == Blocked || s2.south == Blocked) {
+        computedWalls(3) = Blocked
+      }
+      else if (s.south == Open || s2.south == Open) {
+        computedWalls(3) = Open
+      }
+      Surroundings(computedWalls(0), computedWalls(1), computedWalls(2), computedWalls(3))
+  }
 
-//     def ruleConstructor2(face_0: Char, open: Char, face_final: Char): Rule =
-//         Rule(
-//             facing(face_0),
-//             walls(open),
-//             StayHere,
-//             facing(face_final)
-//         )
-//     def ruleConstructorBlocked2(face_0: Char, b: Char, face_final: Char): Rule =
-//         Rule(
-//             facing(face_0),
-//             blocked(b),
-//             StayHere,
-//             facing(face_final)
-//         )
+  // a class to gather the start state and environment description
+  extension (n: Char) {
+    def walls(s: Surroundings): RuleBuilder = RuleBuilder(
+      State(n.toString),
+      s
+    )
+    def apply(s: Surroundings): RuleBuilder = RuleBuilder(
+      State(n.toString),
+      s
+    )
+  }
 
-//     def ruleConstructor3(face_0: Char, open: Char): Rule =
-//         Rule(
-//             facing(face_0),
-//             walls(open),
-//             StayHere,
-//             facing(face_0)
-//         )
+  // a class to gather the move direction and next state
+  class RHSBuilder(val moveDirection: MoveDirection) {
+    def apply(nextState: Char): (MoveDirection, State) =
+      (moveDirection, State(nextState.toString))
+  }
 
-        
+  // internal DSL names for move directions
+  object moveNorthAndFace extends RHSBuilder(North)
+  object moveEastAndFace extends RHSBuilder(East)
+  object moveWestAndFace extends RHSBuilder(West)
+  object moveSouthAndFace extends RHSBuilder(South)
+  object stayHereAndFace extends RHSBuilder(StayHere)
 
-//     def rule1(face_0: Char, open: Char, moveDir: Char, face_final: Char): Rule =
-//         Rule(
-//             facing(face_0),
-//             walls(open),
-//             move(moveDir),
-//             facing(face_final)
-//         )
-//         // Rule(
-//         //     State("0"),
-//         //     Surroundings(Anything, Anything, Anything, Anything),
-//         //     StayHere,
-//         //     State("W")
-//         // )
-
-//     def rule2(): Rule = 
-//         ruleConstructorBlocked2('W', 'W', 'N')
-
-//     def rule3(): Rule =
-//         ruleConstructor1('N', 'N', 'N')
-
-//     def rule4() =
-//         ruleConstructor('N', Array("blocked N", "open S", "move S"), 'S')
-//         // Rule(
-//         //     State("N"),
-//         //     Surroundings(Blocked, Anything, Anything, Open),
-//         //     South,
-//         //     State("S")
-//         // )
-    
-//     def rule5(): Rule =
-//         Rule(
-//             State("S"),
-//             Surroundings(Anything, Anything, Anything, Open),
-//             South,
-//             State("S")
-//         )
-    
-//     def rule6(): Rule = 
-//         Rule(
-//             State("S"),
-//             Surroundings(Anything, Open, Anything, Blocked),
-//             East,
-//             State("E")
-//         )
-    
-//     def rule7(): Rule = 
-//         Rule(
-//             State("E"),
-//             Surroundings(Open, Anything, Anything, Anything),
-//             North,
-//             State("E")
-//         )
-//     def rule8(): Rule =
-//         Rule(
-//             State("E"),
-//             Surroundings(Blocked, Open, Anything, Anything),
-//             East,
-//             State("S")
-//         )
-// }
-// /// imports for calls below 
-// import picolib._
-// import picolib.maze._
-// import picolib.semantics._
-// import java.io.File
-// ///
-
-// /** This is an intentionally bad internal language, but it uses all the parts of
-//   * the picolib library that you might need to implement your language
-//   */
-
-// val emptyMaze = Maze("resources" + File.separator + "empty.txt")
-
-// val rules = List(
-//   /////////////////////////////////////////////////////////
-//   // State 0: go West
-//   /////////////////////////////////////////////////////////
-//     Rule(
-//             State("0"),
-//             Surroundings(Anything, Anything, Anything, Anything),
-//             StayHere,
-//             State("W")
-//         ),
-//   // as long as West is unblocked, go West
-//     Car.rule1('W', 'W', 'W', 'W'),
-
-//   // can't go West anymore, so try to go North (by transitioning to State 1)
-//     Car.rule2(),
-
-//     /////////////////////////////////////////////////////////
-//     // State 1: go North
-//     /////////////////////////////////////////////////////////
-
-//     // as long as North is unblocked, go North
-//     Car.rule3(),
-
-//     // can't go North any more, so try to go South (by transitioning to State 2)
-//     ruleConstructor('N', Array("blocked N", "open S", "move S"), 'S'),
-
-//     /////////////////////////////////////////////////////////
-//     // States 2 & 3: fill from North to South, West to East
-//     /////////////////////////////////////////////////////////
-
-//     // State 2: fill this column from North to South
-//     Car.rule5(),
-
-//     // can't go South anymore, move one column to the East and go North
-//     // (by transitioning to State 3)
-//     Car.rule6(),
-
-//     // State 3: fill this column from South to North
-//     Car.rule7(),
-
-//     // can't go North anymore, move one column to the East and go South
-//     // (by transitioning to State 2)
-//     Car.rule8()
-// )
-
-// ////////////////////////////////////////////////////////////////////////////////
-// // Create and run simulations with the maze and rules defined above
-// ////////////////////////////////////////////////////////////////////////////////
-
-// // text-based simulation
-// object EmptyText extends TextSimulation(emptyMaze, rules)
+  // a class to build a rule from its parts and add the rule to the running
+  // list of rules in this picobor program
+  class RuleBuilder(val startState: State, val surroundings: Surroundings) {
+    val program = Picofun.this
+    def apply(rhs: (MoveDirection, State)) = {
+      val (moveDirection, nextState) = rhs
+      val rule = new Rule(startState, surroundings, moveDirection, nextState)
+      program.addRule(rule)
+    }
+  }
+}

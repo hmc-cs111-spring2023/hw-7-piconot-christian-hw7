@@ -6,31 +6,16 @@ object EmptyBot extends Picofun("resources/empty.txt") {
   // States 0 and 1: move to the top left
 
   // State 0: move left
-// if (facingWest) {
-//   if (isOpen('W') and isBlocked('S')) {
-//     moveWestAndFace('W')
-//   }
-// }
-
-// (ifFacingWest {
-//   (walls(isOpen('W') and isBlocked('S'))) {
-//     moveWestAndFace('W')
-//   }
-// })
-
-  (ifFacingWest {
-      isOpen('W')
-    }
-  ) {
+  (ifFacingWest walls(isOpen('W'))) {
     moveWestAndFace('W')
   } // thenGo all the way to the left
 
-  (ifFacingWest {isBlocked('W')}) {
+  (ifFacingWest walls(isBlocked('W'))) {
     stayHereAndFace('N')
   } // can't thenGo left anymore, so try to thenGo up
 
   // State 1: move up
-  (ifFacingNorth {isOpen('N')}) {
+  (ifFacingNorth walls(isOpen('N'))) {
     moveNorthAndFace('N')
   } // thenGo all the way to the top
   
