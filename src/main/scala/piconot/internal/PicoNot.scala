@@ -8,6 +8,9 @@ import scala.collection.mutable.ListBuffer
 
 /** @author
   *   christian
+  * 
+  * This code borrows from the sample provided by Prof. Ben for features outside 
+  * of the internal DSL definition (e.g. adding rules to ListBuffer and run command)
   */
 
 class Picofun(val mazeFilename: String) extends App {
@@ -91,26 +94,26 @@ class Picofun(val mazeFilename: String) extends App {
     )
   }
 
-  // a class to gather the move direction and next state
-  class RHSBuilder(val moveDirection: MoveDirection) {
-    def apply(nextState: Char): (MoveDirection, State) =
-      (moveDirection, State(nextState.toString))
-  }
-
   // internal DSL names for move directions
-  object moveNorthAndFace extends RHSBuilder(North)
-  object moveEastAndFace extends RHSBuilder(East)
-  object moveWestAndFace extends RHSBuilder(West)
-  object moveSouthAndFace extends RHSBuilder(South)
-  object stayHereAndFace extends RHSBuilder(StayHere)
+  object moveNorthAndFace extends contents(North)
+  object moveEastAndFace extends contents(East)
+  object moveWestAndFace extends contents(West)
+  object moveSouthAndFace extends contents(South)
+  object stayHereAndFace extends contents(StayHere)
+
+  // a class to gather the move direction and next state
+  class contents(val move: MoveDirection) {
+    def apply(face_f: Char): (MoveDirection, State) =
+      (move, State(face_f.toString))
+  }
 
   // a class to build a rule from its parts and add the rule to the running
   // list of rules in this picobor program
-  class RuleBuilder(val startState: State, val surroundings: Surroundings) {
+  class RuleBuilder(val face_old: State, val s: Surroundings) {
     val program = Picofun.this
-    def apply(rhs: (MoveDirection, State)) = {
-      val (moveDirection, nextState) = rhs
-      val rule = new Rule(startState, surroundings, moveDirection, nextState)
+    def apply(body: (MoveDirection, State)) = {
+      val (move, face_new) = body
+      val rule = new Rule(face_old, s, move, face_new)
       program.addRule(rule)
     }
   }
